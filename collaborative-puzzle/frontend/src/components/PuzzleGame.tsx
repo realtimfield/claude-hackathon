@@ -17,7 +17,7 @@ import {
 } from '../features/puzzleSlice'
 import { setCurrentUser, setSessionId } from '../features/userSlice'
 import { MessageType, WebSocketMessage } from '../types/types'
-import axios from 'axios'
+import axios from '../config/axios'
 import PuzzlePiece from './PuzzlePiece'
 import UserCursor from './UserCursor'
 import JoinSession from './JoinSession'
@@ -37,6 +37,7 @@ const PuzzleGame: React.FC = () => {
   const [containerOffset, setContainerOffset] = useState({ x: 0, y: 0 })
   const [needsToJoin, setNeedsToJoin] = useState(false)
   const [showScoreboard, setShowScoreboard] = useState(false)
+  const [copyFeedback, setCopyFeedback] = useState(false)
 
   useEffect(() => {
     if (!sessionId) return
@@ -223,6 +224,16 @@ const PuzzleGame: React.FC = () => {
     sendMessage(MessageType.PIECE_RELEASE, { pieceId, x, y })
   }
 
+  const handleCopyLink = () => {
+    const link = `${window.location.origin}/puzzle/${sessionId}`
+    navigator.clipboard.writeText(link).then(() => {
+      setCopyFeedback(true)
+      setTimeout(() => setCopyFeedback(false), 2000)
+    }).catch(err => {
+      console.error('Failed to copy link:', err)
+    })
+  }
+
   if (needsToJoin) {
     return <JoinSession />
   }
@@ -283,7 +294,23 @@ const PuzzleGame: React.FC = () => {
             <div>
               <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-1">Collaborative Puzzle</h1>
               <p className="text-gray-600">
-                <span className="font-medium">Session:</span> <code className="bg-gray-100 px-2 py-1 rounded text-sm">{sessionId?.slice(0, 8)}...</code> | 
+                <span className="font-medium">Session:</span> 
+                <code 
+                  className="bg-gray-100 px-2 py-1 rounded text-sm cursor-pointer hover:bg-gray-200 transition-colors relative group"
+                  onClick={handleCopyLink}
+                  title="Click to copy join link"
+                >
+                  {sessionId?.slice(0, 8)}...
+                  <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                    Click to copy link
+                  </span>
+                </code>
+                {copyFeedback && (
+                  <span className="ml-2 text-green-600 text-sm animate-fadeIn">
+                    ✓ Copied!
+                  </span>
+                )}
+                <span className="font-medium ml-2">|</span>
                 <span className="font-medium ml-2">Grid:</span> {session.gridSize}×{session.gridSize}
               </p>
             </div>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useParams } from 'react-router-dom'
-import axios from 'axios'
+import axios from '../config/axios'
 
 const JoinSession: React.FC = () => {
   const { sessionId } = useParams<{ sessionId: string }>()
