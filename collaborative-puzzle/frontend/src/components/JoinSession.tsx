@@ -1,9 +1,12 @@
 import React, { useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { useDispatch } from 'react-redux'
+import { clearSession } from '../features/puzzleSlice'
 import axios from '../config/axios'
 
 const JoinSession: React.FC = () => {
   const { sessionId } = useParams<{ sessionId: string }>()
+  const dispatch = useDispatch()
   const [name, setName] = useState('')
   const [isJoining, setIsJoining] = useState(false)
   const [error, setError] = useState('')
@@ -32,7 +35,10 @@ const JoinSession: React.FC = () => {
       localStorage.setItem('userId', response.data.id)
       localStorage.setItem('userName', response.data.name)
       
-      // Force a page reload to re-initialize the PuzzleGame component
+      // Clear any existing session state before navigating
+      dispatch(clearSession())
+      
+      // Force a page reload to ensure clean state
       window.location.href = `/puzzle/${sessionId}`
     } catch (err: any) {
       if (err.response?.status === 404) {

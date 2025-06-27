@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { RootState, AppDispatch } from '../store/store'
 import {
+  clearSession,
   setSession,
   updatePiece,
   placePiece,
@@ -23,6 +24,7 @@ import PuzzlePiece from './PuzzlePiece'
 import UserCursor from './UserCursor'
 import JoinSession from './JoinSession'
 import Scoreboard from './Scoreboard'
+import ImageModal from './ImageModal'
 import { throttle } from '../utils/throttle'
 
 const PuzzleGame: React.FC = () => {
@@ -38,12 +40,24 @@ const PuzzleGame: React.FC = () => {
   const [containerOffset, setContainerOffset] = useState({ x: 0, y: 0 })
   const [needsToJoin, setNeedsToJoin] = useState(false)
   const [showScoreboard, setShowScoreboard] = useState(false)
+  const [showImageModal, setShowImageModal] = useState(false)
   const [copyFeedback, setCopyFeedback] = useState(false)
   const [hoveredPieceId, setHoveredPieceId] = useState<number | null>(null)
   const [draggingPieceId, setDraggingPieceId] = useState<number | null>(null)
 
   useEffect(() => {
     if (!sessionId) return
+
+    // Check if we're navigating to a different session
+    if (session && session.id !== sessionId) {
+      // Clear the current session state before loading the new one
+      dispatch(clearSession())
+      // Close existing WebSocket connection
+      if (wsRef.current) {
+        wsRef.current.close()
+        wsRef.current = null
+      }
+    }
 
     const userId = localStorage.getItem('userId')
     const userName = localStorage.getItem('userName')
@@ -53,6 +67,8 @@ const PuzzleGame: React.FC = () => {
       return
     }
 
+    // Reset needsToJoin if we have credentials
+    setNeedsToJoin(false)
     dispatch(setSessionId(sessionId))
     loadSession()
 
@@ -128,7 +144,17 @@ const PuzzleGame: React.FC = () => {
       dispatch(setSession(response.data))
       
       const userId = localStorage.getItem('userId')!
-      connectWebSocket(userId)
+      
+      // Check if user exists in the session
+      const existingUser = response.data.users[userId]
+      if (existingUser) {
+        // User is already in the session, just reconnect
+        dispatch(setCurrentUser(existingUser))
+        connectWebSocket(userId)
+      } else {
+        // User is not in the session, need to join
+        setNeedsToJoin(true)
+      }
     } catch (err) {
       dispatch(setError('Failed to load session'))
       setTimeout(() => navigate('/'), 2000)
@@ -426,8 +452,10 @@ const PuzzleGame: React.FC = () => {
 
         {/* Thumbnail of complete image */}
         <div 
-          className="fixed bottom-6 left-6 glass-morphism rounded-2xl shadow-xl p-3 card-hover animate-fadeIn"
+          className="fixed bottom-6 left-6 glass-morphism rounded-2xl shadow-xl p-3 card-hover animate-fadeIn cursor-pointer transform transition-transform hover:scale-105"
           style={{ zIndex: 50 }}
+          onClick={() => setShowImageModal(true)}
+          title="Click to enlarge"
         >
           <img 
             src={session.imageUrl} 
@@ -441,6 +469,11 @@ const PuzzleGame: React.FC = () => {
             }}
           />
           <p className="text-xs text-gray-600 text-center mt-2 font-medium">Reference Image</p>
+          <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-black/20 rounded-2xl">
+            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+            </svg>
+          </div>
         </div>
 
         {/* Scoreboard Modal */}
@@ -457,6 +490,13 @@ const PuzzleGame: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Image Modal */}
+        <ImageModal
+          imageUrl={session.imageUrl}
+          isOpen={showImageModal}
+          onClose={() => setShowImageModal(false)}
+        />
       </div>
     </div>
   )

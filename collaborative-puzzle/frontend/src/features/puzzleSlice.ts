@@ -19,6 +19,12 @@ const puzzleSlice = createSlice({
   name: 'puzzle',
   initialState,
   reducers: {
+    clearSession: (state) => {
+      state.session = null
+      state.isLoading = false
+      state.error = null
+      state.isCompleted = false
+    },
     setSession: (state, action: PayloadAction<PuzzleSession>) => {
       state.session = action.payload
       state.isCompleted = action.payload.completed
@@ -105,6 +111,7 @@ const puzzleSlice = createSlice({
 })
 
 export const {
+  clearSession,
   setSession,
   updatePiece,
   placePiece,
