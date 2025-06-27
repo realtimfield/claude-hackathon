@@ -328,6 +328,25 @@ const PuzzleGame: React.FC = () => {
             return <UserCursor key={user.id} user={user} />
           })}
         </div>
+
+        {/* Thumbnail of complete image */}
+        <div 
+          className="fixed bottom-4 left-4 bg-white rounded-lg shadow-lg p-2"
+          style={{ zIndex: 50 }}
+        >
+          <img 
+            src={session.imageUrl} 
+            alt="Complete puzzle"
+            className="rounded"
+            style={{
+              width: '150px',
+              height: 'auto',
+              maxHeight: '150px',
+              objectFit: 'contain'
+            }}
+          />
+          <p className="text-xs text-gray-600 text-center mt-1">Reference</p>
+        </div>
       </div>
     </div>
   )
