@@ -8,8 +8,9 @@ const Home: React.FC = () => {
   const [sessionId, setSessionId] = useState('')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [gridSize, setGridSize] = useState(5)
-  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [joinLoading, setJoinLoading] = useState(false)
+  const [createLoading, setCreateLoading] = useState(false)
 
   const handleJoinSession = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -19,7 +20,7 @@ const Home: React.FC = () => {
     }
 
     try {
-      setLoading(true)
+      setJoinLoading(true)
       setError(null)
       
       // Join session
@@ -37,7 +38,7 @@ const Home: React.FC = () => {
         setError('Failed to join session')
       }
     } finally {
-      setLoading(false)
+      setJoinLoading(false)
     }
   }
 
@@ -49,7 +50,7 @@ const Home: React.FC = () => {
     }
 
     try {
-      setLoading(true)
+      setCreateLoading(true)
       setError(null)
       
       // Create session
@@ -74,7 +75,7 @@ const Home: React.FC = () => {
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to create session')
     } finally {
-      setLoading(false)
+      setCreateLoading(false)
     }
   }
 
@@ -108,24 +109,26 @@ const Home: React.FC = () => {
           </div>
         )}
         
+        {/* Common name input */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <label className="block text-gray-700 text-sm font-bold mb-2">
+            Your Name
+          </label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Enter your name"
+            required
+          />
+        </div>
+        
         <div className="grid md:grid-cols-2 gap-6">
           {/* Join existing session */}
           <div className="bg-white rounded-lg shadow-md p-6">
             <h2 className="text-2xl font-semibold mb-4 text-gray-700">Join Session</h2>
             <form onSubmit={handleJoinSession}>
-              <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2">
-                  Your Name
-                </label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter your name"
-                  required
-                />
-              </div>
               
               <div className="mb-4">
                 <label className="block text-gray-700 text-sm font-bold mb-2">
@@ -146,10 +149,10 @@ const Home: React.FC = () => {
               
               <button
                 type="submit"
-                disabled={loading}
+                disabled={joinLoading || !name.trim()}
                 className="w-full bg-blue-500 text-white font-bold py-2 px-4 rounded hover:bg-blue-600 disabled:bg-gray-400"
               >
-                {loading ? 'Joining...' : 'Join Session'}
+                {joinLoading ? 'Joining...' : 'Join Session'}
               </button>
             </form>
           </div>
@@ -158,19 +161,6 @@ const Home: React.FC = () => {
           <div className="bg-white rounded-lg shadow-md p-6">
             <h2 className="text-2xl font-semibold mb-4 text-gray-700">Create New Session</h2>
             <form onSubmit={handleCreateSession}>
-              <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2">
-                  Your Name
-                </label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter your name"
-                  required
-                />
-              </div>
               
               <div className="mb-4">
                 <label className="block text-gray-700 text-sm font-bold mb-2">
@@ -205,10 +195,10 @@ const Home: React.FC = () => {
               
               <button
                 type="submit"
-                disabled={loading || !selectedFile}
+                disabled={createLoading || !selectedFile || !name.trim()}
                 className="w-full bg-green-500 text-white font-bold py-2 px-4 rounded hover:bg-green-600 disabled:bg-gray-400"
               >
-                {loading ? 'Creating...' : 'Create Session'}
+                {createLoading ? 'Creating...' : 'Create Session'}
               </button>
             </form>
           </div>

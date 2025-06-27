@@ -22,4 +22,5 @@ public class PuzzlePiece implements Serializable {
     private String imageUrl; // URL to the piece image
     private boolean isPlaced;
     private String lockedBy; // User ID who is currently dragging this piece
+    private String placedBy; // User ID who correctly placed this piece
 }

@@ -19,6 +19,7 @@ export interface PuzzlePiece {
   imageUrl: string
   isPlaced: boolean
   lockedBy: string | null
+  placedBy: string | null
 }
 
 export interface PuzzleSession {

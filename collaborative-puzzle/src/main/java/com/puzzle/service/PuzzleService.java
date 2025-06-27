@@ -51,11 +51,19 @@ public class PuzzleService {
         BufferedImage resizedImage = Thumbnails.of(originalImage)
                 .size(500, 400)
                 .keepAspectRatio(true)
+                .outputQuality(0.85) // Compress with 85% quality
                 .asBufferedImage();
         
         String imageId = UUID.randomUUID().toString();
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ImageIO.write(resizedImage, "png", baos);
+        
+        // Use JPEG for better compression
+        Thumbnails.of(resizedImage)
+                .scale(1.0)
+                .outputFormat("jpeg")
+                .outputQuality(0.85)
+                .toOutputStream(baos);
+        
         imageRepository.saveImage(imageId, baos.toByteArray());
         
         // Create puzzle session
@@ -100,9 +108,9 @@ public class PuzzleService {
                 piece.setWidth(pieceWidth);
                 piece.setHeight(pieceHeight);
                 
-                // Correct position
-                piece.setCorrectX(col * pieceWidth);
-                piece.setCorrectY(row * pieceHeight);
+                // Correct position (includes the target area offset)
+                piece.setCorrectX(50 + col * pieceWidth);
+                piece.setCorrectY(50 + row * pieceHeight);
                 
                 // Arrange pieces in a grid to the right of the target area
                 // Container is 1200x800, image area is on the left, so scatter pieces in remaining space
@@ -132,6 +140,7 @@ public class PuzzleService {
                 piece.setCurrentY(Math.min(yPos, 750 - pieceHeight)); // Container height is 800
                 
                 piece.setPlaced(false);
+                piece.setPlacedBy(null); // Initialize as null
                 pieces.add(piece);
                 pieceId++;
             }
@@ -156,10 +165,17 @@ public class PuzzleService {
                 
                 BufferedImage pieceImage = originalImage.getSubimage(x, y, actualWidth, actualHeight);
                 
-                // Save the piece image
+                // Save the piece image with compression
                 String pieceImageId = UUID.randomUUID().toString();
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                ImageIO.write(pieceImage, "png", baos);
+                
+                // Use JPEG compression for piece images too
+                Thumbnails.of(pieceImage)
+                        .scale(1.0)
+                        .outputFormat("jpeg")
+                        .outputQuality(0.9) // Higher quality for pieces since they're smaller
+                        .toOutputStream(baos);
+                
                 imageRepository.saveImage(pieceImageId, baos.toByteArray());
                 
                 // Set the image URL for the piece
@@ -323,6 +339,10 @@ public class PuzzleService {
             
             // Check if it's the correct position and mark as placed
             if (nearestCol == piece.getCol() && nearestRow == piece.getRow()) {
+                // Only set placedBy if it wasn't already placed
+                if (!piece.isPlaced()) {
+                    piece.setPlacedBy(userId);
+                }
                 piece.setPlaced(true);
                 
                 // Check if puzzle is complete

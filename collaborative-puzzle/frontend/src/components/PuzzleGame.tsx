@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { RootState, AppDispatch } from '../store/store'
@@ -21,6 +21,8 @@ import axios from 'axios'
 import PuzzlePiece from './PuzzlePiece'
 import UserCursor from './UserCursor'
 import JoinSession from './JoinSession'
+import Scoreboard from './Scoreboard'
+import { throttle } from '../utils/throttle'
 
 const PuzzleGame: React.FC = () => {
   const { sessionId } = useParams<{ sessionId: string }>()
@@ -34,6 +36,7 @@ const PuzzleGame: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null)
   const [containerOffset, setContainerOffset] = useState({ x: 0, y: 0 })
   const [needsToJoin, setNeedsToJoin] = useState(false)
+  const [showScoreboard, setShowScoreboard] = useState(false)
 
   useEffect(() => {
     if (!sessionId) return
@@ -175,6 +178,7 @@ const PuzzleGame: React.FC = () => {
         
       case MessageType.PUZZLE_COMPLETE:
         dispatch(setPuzzleComplete())
+        setShowScoreboard(true)
         break
     }
   }
@@ -186,15 +190,22 @@ const PuzzleGame: React.FC = () => {
     }
   }
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!containerRef.current) return
-    
-    const rect = containerRef.current.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
-    
+  const handleCursorMove = useCallback((x: number, y: number) => {
     sendMessage(MessageType.CURSOR_MOVE, { x, y })
-  }
+  }, [])
+
+  const throttledHandleMouseMove = useMemo(
+    () => throttle((e: React.MouseEvent) => {
+      if (!containerRef.current) return
+      
+      const rect = containerRef.current.getBoundingClientRect()
+      const x = e.clientX - rect.left
+      const y = e.clientY - rect.top
+      
+      handleCursorMove(x, y)
+    }, 50),
+    [handleCursorMove]
+  )
 
   const handlePieceMove = (pieceId: number, x: number, y: number) => {
     sendMessage(MessageType.PIECE_MOVE, { pieceId, x, y })
@@ -295,7 +306,7 @@ const PuzzleGame: React.FC = () => {
             height: '800px',
             overflow: 'hidden',
           }}
-          onMouseMove={handleMouseMove}
+          onMouseMove={throttledHandleMouseMove}
         >
           {/* Puzzle area outline */}
           <div
@@ -347,6 +358,21 @@ const PuzzleGame: React.FC = () => {
           />
           <p className="text-xs text-gray-600 text-center mt-1">Reference</p>
         </div>
+
+        {/* Scoreboard Modal */}
+        {showScoreboard && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="relative">
+              <Scoreboard session={session} />
+              <button
+                onClick={() => setShowScoreboard(false)}
+                className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

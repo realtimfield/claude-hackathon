@@ -213,6 +213,14 @@ public class PuzzleWebSocketHandler extends TextWebSocketHandler {
             
             // Check if puzzle is complete
             if (session.isCompleted()) {
+                // First send the updated session state with all placedBy information
+                WebSocketMessage sessionMessage = new WebSocketMessage(
+                    WebSocketMessage.MessageType.SESSION_STATE,
+                    Map.of("session", session, "userId", userConn.userId)
+                );
+                broadcastToAll(userConn.sessionId, sessionMessage);
+                
+                // Then send the completion message
                 WebSocketMessage completeMessage = new WebSocketMessage(
                     WebSocketMessage.MessageType.PUZZLE_COMPLETE, 
                     Map.of("completedAt", System.currentTimeMillis())

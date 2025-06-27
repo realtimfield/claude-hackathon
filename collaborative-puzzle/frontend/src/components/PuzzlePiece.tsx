@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react'
+import React, { useRef, useState, useEffect, useCallback } from 'react'
 import { PuzzlePiece as PuzzlePieceType } from '../types/types'
 
 interface PuzzlePieceProps {
@@ -24,10 +24,66 @@ const PuzzlePiece: React.FC<PuzzlePieceProps> = ({
   const [isDragging, setIsDragging] = useState(false)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   const [currentPosition, setCurrentPosition] = useState({ x: piece.currentX, y: piece.currentY })
+  const [isSnapping, setIsSnapping] = useState(false)
+  const lastUpdateRef = useRef<number>(0)
+  const pendingUpdateRef = useRef<{ x: number; y: number } | null>(null)
+  const updateTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
+    // Check if this is a snap movement (significant position change while not dragging)
+    if (!isDragging && (piece.currentX !== currentPosition.x || piece.currentY !== currentPosition.y)) {
+      const dx = Math.abs(piece.currentX - currentPosition.x)
+      const dy = Math.abs(piece.currentY - currentPosition.y)
+      
+      // If position changed significantly, it's likely a snap
+      if (dx > 5 || dy > 5) {
+        setIsSnapping(true)
+        setTimeout(() => setIsSnapping(false), 300) // Match transition duration
+      }
+    }
     setCurrentPosition({ x: piece.currentX, y: piece.currentY })
-  }, [piece.currentX, piece.currentY])
+  }, [piece.currentX, piece.currentY, isDragging, currentPosition.x, currentPosition.y])
+
+  // Throttled move function that only sends updates every 100ms
+  const throttledMove = useCallback((pieceId: number, x: number, y: number) => {
+    const now = Date.now()
+    const timeSinceLastUpdate = now - lastUpdateRef.current
+
+    if (timeSinceLastUpdate >= 50) {
+      // Enough time has passed, send update immediately
+      onMove(pieceId, x, y)
+      lastUpdateRef.current = now
+      pendingUpdateRef.current = null
+      if (updateTimerRef.current) {
+        clearTimeout(updateTimerRef.current)
+        updateTimerRef.current = null
+      }
+    } else {
+      // Too soon, schedule update
+      pendingUpdateRef.current = { x, y }
+      
+      if (!updateTimerRef.current) {
+        const delay = 50 - timeSinceLastUpdate
+        updateTimerRef.current = setTimeout(() => {
+          if (pendingUpdateRef.current) {
+            onMove(pieceId, pendingUpdateRef.current.x, pendingUpdateRef.current.y)
+            lastUpdateRef.current = Date.now()
+            pendingUpdateRef.current = null
+          }
+          updateTimerRef.current = null
+        }, delay)
+      }
+    }
+  }, [onMove])
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (updateTimerRef.current) {
+        clearTimeout(updateTimerRef.current)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     if (isDragging) {
@@ -40,11 +96,24 @@ const PuzzlePiece: React.FC<PuzzlePieceProps> = ({
         newY = Math.max(0, Math.min(newY, 800 - piece.height))
         
         setCurrentPosition({ x: newX, y: newY })
-        onMove(piece.id, newX, newY)
+        throttledMove(piece.id, newX, newY)
       }
 
       const handleMouseUp = () => {
         setIsDragging(false)
+        
+        // Clear any pending throttled updates
+        if (updateTimerRef.current) {
+          clearTimeout(updateTimerRef.current)
+          updateTimerRef.current = null
+        }
+        
+        // Send final position if there's a pending update
+        if (pendingUpdateRef.current) {
+          onMove(piece.id, pendingUpdateRef.current.x, pendingUpdateRef.current.y)
+          pendingUpdateRef.current = null
+        }
+        
         onRelease(piece.id, currentPosition.x, currentPosition.y)
         onUnlock(piece.id)
       }
@@ -57,7 +126,7 @@ const PuzzlePiece: React.FC<PuzzlePieceProps> = ({
         document.removeEventListener('mouseup', handleMouseUp)
       }
     }
-  }, [isDragging, dragOffset, piece.id, piece.width, piece.height, currentPosition, containerOffset, onMove, onUnlock, onRelease])
+  }, [isDragging, dragOffset, piece.id, piece.width, piece.height, currentPosition, containerOffset, throttledMove, onUnlock, onRelease])
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (isLocked) return
@@ -88,7 +157,7 @@ const PuzzlePiece: React.FC<PuzzlePieceProps> = ({
     cursor: isLocked ? 'not-allowed' : isDragging ? 'grabbing' : 'grab',
     zIndex: isDragging ? 1000 : 10,
     opacity: 1,
-    transition: 'none',
+    transition: isSnapping ? 'left 0.3s ease, top 0.3s ease' : 'none',
   }
 
   return (
