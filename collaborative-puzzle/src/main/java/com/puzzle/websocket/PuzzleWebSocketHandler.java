@@ -13,6 +13,7 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
@@ -265,11 +266,47 @@ public class PuzzleWebSocketHandler extends TextWebSocketHandler {
                 data.put("rotation", piece.getRotation());
                 data.put("userId", userConn.userId);
                 
+                // Include placement data if piece was placed correctly via rotation
+                if (piece.isPlaced()) {
+                    data.put("isPlaced", true);
+                    data.put("placedBy", piece.getPlacedBy());
+                    
+                    // Also send a PIECE_PLACED message for consistency
+                    Map<String, Object> placedData = new HashMap<>();
+                    placedData.put("pieceId", pieceId);
+                    placedData.put("x", piece.getCurrentX());
+                    placedData.put("y", piece.getCurrentY());
+                    placedData.put("userId", piece.getPlacedBy());
+                    
+                    WebSocketMessage placedMessage = new WebSocketMessage(
+                        WebSocketMessage.MessageType.PIECE_PLACED,
+                        placedData
+                    );
+                    broadcastToAll(userConn.sessionId, placedMessage);
+                }
+                
                 WebSocketMessage rotateMessage = new WebSocketMessage(
                     WebSocketMessage.MessageType.PIECE_ROTATE, 
                     data
                 );
                 broadcastToAll(userConn.sessionId, rotateMessage);
+            }
+            
+            // Check if puzzle is complete after rotation
+            if (session.isCompleted()) {
+                // First send the updated session state with all placedBy information
+                WebSocketMessage sessionMessage = new WebSocketMessage(
+                    WebSocketMessage.MessageType.SESSION_STATE,
+                    Map.of("session", session, "userId", userConn.userId)
+                );
+                broadcastToAll(userConn.sessionId, sessionMessage);
+                
+                // Then send the completion message
+                WebSocketMessage completeMessage = new WebSocketMessage(
+                    WebSocketMessage.MessageType.PUZZLE_COMPLETE,
+                    Map.of("completedAt", System.currentTimeMillis())
+                );
+                broadcastToAll(userConn.sessionId, completeMessage);
             }
         }
     }

@@ -38,7 +38,7 @@ const puzzleSlice = createSlice({
         }
       }
     },
-    placePiece: (state, action: PayloadAction<{ pieceId: number; x: number; y: number }>) => {
+    placePiece: (state, action: PayloadAction<{ pieceId: number; x: number; y: number; userId?: string }>) => {
       if (state.session) {
         const piece = state.session.pieces.find(p => p.id === action.payload.pieceId)
         if (piece) {
@@ -46,6 +46,9 @@ const puzzleSlice = createSlice({
           piece.currentY = action.payload.y
           piece.isPlaced = true
           piece.lockedBy = null
+          if (action.payload.userId) {
+            piece.placedBy = action.payload.userId
+          }
         }
       }
     },
@@ -87,11 +90,17 @@ const puzzleSlice = createSlice({
         state.session.users[action.payload.userId].cursorY = action.payload.y
       }
     },
-    rotatePiece: (state, action: PayloadAction<{ pieceId: number; rotation: number }>) => {
+    rotatePiece: (state, action: PayloadAction<{ pieceId: number; rotation: number; isPlaced?: boolean; placedBy?: string }>) => {
       if (state.session) {
         const piece = state.session.pieces.find(p => p.id === action.payload.pieceId)
         if (piece) {
           piece.rotation = action.payload.rotation
+          if (action.payload.isPlaced !== undefined) {
+            piece.isPlaced = action.payload.isPlaced
+          }
+          if (action.payload.placedBy !== undefined) {
+            piece.placedBy = action.payload.placedBy
+          }
         }
       }
     },

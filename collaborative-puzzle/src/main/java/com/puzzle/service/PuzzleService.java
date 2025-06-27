@@ -57,14 +57,46 @@ public class PuzzleService {
             throw new IOException("Failed to read image. The file may be corrupted or in an unsupported format.");
         }
         
-        // Frontend already compressed the image, now resize to square for puzzle
-        // First determine the size - use the smaller dimension to create a square
+        // Frontend already compressed the image, now resize to fit in a square with padding
         int targetSize = 480; // Square size for the puzzle
         
-        BufferedImage resizedImage = Thumbnails.of(originalImage)
-                .size(targetSize, targetSize)
-                .keepAspectRatio(false) // Force square aspect ratio
+        // Calculate dimensions preserving aspect ratio
+        int originalWidth = originalImage.getWidth();
+        int originalHeight = originalImage.getHeight();
+        double aspectRatio = (double) originalWidth / originalHeight;
+        
+        int newWidth, newHeight;
+        if (aspectRatio > 1) {
+            // Wider than tall
+            newWidth = targetSize;
+            newHeight = (int) (targetSize / aspectRatio);
+        } else {
+            // Taller than wide
+            newHeight = targetSize;
+            newWidth = (int) (targetSize * aspectRatio);
+        }
+        
+        // Resize maintaining aspect ratio
+        BufferedImage scaledImage = Thumbnails.of(originalImage)
+                .size(newWidth, newHeight)
+                .keepAspectRatio(true)
                 .asBufferedImage();
+        
+        // Create square image with padding
+        BufferedImage resizedImage = new BufferedImage(targetSize, targetSize, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g2d = resizedImage.createGraphics();
+        
+        // Fill with a neutral background color (light gray)
+        g2d.setColor(new Color(240, 240, 240));
+        g2d.fillRect(0, 0, targetSize, targetSize);
+        
+        // Calculate centering position
+        int x = (targetSize - newWidth) / 2;
+        int y = (targetSize - newHeight) / 2;
+        
+        // Draw the scaled image centered
+        g2d.drawImage(scaledImage, x, y, null);
+        g2d.dispose();
         
         String imageId = UUID.randomUUID().toString();
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -365,9 +397,18 @@ public class PuzzleService {
             }
         }
         
-        // If we found a valid position, use it
-        int nearestCol = bestCol >= 0 ? bestCol : 0;
-        int nearestRow = bestRow >= 0 ? bestRow : 0;
+        // If we didn't find a valid position, don't snap
+        if (bestCol < 0 || bestRow < 0) {
+            // Keep position as is
+            piece.setCurrentX(x);
+            piece.setCurrentY(y);
+            piece.setPlaced(false);
+            sessionRepository.save(session);
+            return true;
+        }
+        
+        int nearestCol = bestCol;
+        int nearestRow = bestRow;
         
         // Calculate snap position
         double snapX = targetAreaX + nearestCol * pieceWidth;
@@ -375,10 +416,6 @@ public class PuzzleService {
         
         // Use the minimum distance we already calculated
         double distance = minDistance;
-        
-        // Log snapping details for debugging
-        System.out.println(String.format("Piece %d: Center(%.1f, %.1f), Nearest(%d,%d), SnapPos(%.1f,%.1f), Distance: %.1f, Threshold: %d, Rotation: %d", 
-            pieceId, pieceCenterX, pieceCenterY, nearestCol, nearestRow, snapX, snapY, distance, snapThreshold, piece.getRotation()));
         
         // For rotated pieces, we might need a slightly larger threshold due to visual/logical bounds mismatch
         int effectiveThreshold = snapThreshold;
@@ -516,6 +553,30 @@ public class PuzzleService {
             if (!correctPosition || !correctRotation) {
                 piece.setPlaced(false);
                 piece.setPlacedBy(null);
+            }
+        } else {
+            // Check if the piece is now in the correct position and rotation
+            int pieceWidth = piece.getWidth();
+            int pieceHeight = piece.getHeight();
+            int targetAreaX = 50;
+            int targetAreaY = 50;
+            
+            // Calculate which grid position the piece is at (use same logic as placement check)
+            int col = (int)((piece.getCurrentX() - targetAreaX) / pieceWidth);
+            int row = (int)((piece.getCurrentY() - targetAreaY) / pieceHeight);
+            
+            // Check if it's at the correct position with correct rotation
+            if (col == piece.getCol() && row == piece.getRow() && 
+                piece.getRotation() == piece.getCorrectRotation()) {
+                piece.setPlaced(true);
+                piece.setPlacedBy(userId);
+                
+                // Check if puzzle is complete
+                boolean allPlaced = session.getPieces().stream()
+                    .allMatch(p -> p.isPlaced() && p.getRotation() == p.getCorrectRotation());
+                if (allPlaced) {
+                    session.setCompleted(true);
+                }
             }
         }
         
