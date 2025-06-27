@@ -48,21 +48,17 @@ public class PuzzleService {
             throw new IOException("Failed to read image. The file may be corrupted or in an unsupported format.");
         }
         
+        // Frontend already compressed the image, so we just need to resize for puzzle
         BufferedImage resizedImage = Thumbnails.of(originalImage)
                 .size(500, 400)
                 .keepAspectRatio(true)
-                .outputQuality(0.85) // Compress with 85% quality
                 .asBufferedImage();
         
         String imageId = UUID.randomUUID().toString();
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         
-        // Use JPEG for better compression
-        Thumbnails.of(resizedImage)
-                .scale(1.0)
-                .outputFormat("jpeg")
-                .outputQuality(0.85)
-                .toOutputStream(baos);
+        // Save as JPEG (frontend already compressed it)
+        ImageIO.write(resizedImage, "JPEG", baos);
         
         imageRepository.saveImage(imageId, baos.toByteArray());
         
@@ -169,12 +165,8 @@ public class PuzzleService {
                 String pieceImageId = UUID.randomUUID().toString();
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
                 
-                // Use JPEG compression for piece images too
-                Thumbnails.of(pieceImage)
-                        .scale(1.0)
-                        .outputFormat("jpeg")
-                        .outputQuality(0.9) // Higher quality for pieces since they're smaller
-                        .toOutputStream(baos);
+                // Save piece as JPEG
+                ImageIO.write(pieceImage, "JPEG", baos);
                 
                 imageRepository.saveImage(pieceImageId, baos.toByteArray());
                 

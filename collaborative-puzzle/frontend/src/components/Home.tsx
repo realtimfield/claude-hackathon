@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from '../config/axios'
+import { compressImage, formatFileSize } from '../utils/imageCompression'
 
 const Home: React.FC = () => {
   const navigate = useNavigate()
@@ -11,6 +12,7 @@ const Home: React.FC = () => {
   const [error, setError] = useState<string | null>(null)
   const [joinLoading, setJoinLoading] = useState(false)
   const [createLoading, setCreateLoading] = useState(false)
+  const [compressing, setCompressing] = useState(false)
 
   const handleJoinSession = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -80,19 +82,40 @@ const Home: React.FC = () => {
   }
 
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0]
-      if (file.size > 10 * 1024 * 1024) {
-        setError('File too large. Maximum size is 10MB')
-        return
-      }
+      
       if (!['image/jpeg', 'image/png'].includes(file.type)) {
         setError('Invalid file type. Only JPG and PNG are allowed')
         return
       }
-      setSelectedFile(file)
+      
       setError(null)
+      setCompressing(true)
+      
+      try {
+        // Compress the image
+        const compressedFile = await compressImage(file, {
+          maxWidth: 1500,
+          maxHeight: 1500,
+          quality: 0.85,
+          outputFormat: 'jpeg'
+        })
+        
+        // Check if compressed file is still too large
+        if (compressedFile.size > 10 * 1024 * 1024) {
+          setError('Image is too large even after compression. Please use a smaller image.')
+          return
+        }
+        
+        setSelectedFile(compressedFile)
+      } catch (err) {
+        console.error('Failed to compress image:', err)
+        setError('Failed to process image. Please try another file.')
+      } finally {
+        setCompressing(false)
+      }
     }
   }
 
@@ -180,6 +203,16 @@ const Home: React.FC = () => {
                 </div>
                 <p className="text-sm text-gray-500 mt-2">
                   JPG or PNG, max 10MB
+                  {selectedFile && (
+                    <span className="block text-xs text-green-600 mt-1">
+                      Selected: {formatFileSize(selectedFile.size)}
+                    </span>
+                  )}
+                  {compressing && (
+                    <span className="block text-xs text-blue-600 mt-1 animate-pulse">
+                      Compressing image...
+                    </span>
+                  )}
                 </p>
               </div>
               
@@ -200,10 +233,10 @@ const Home: React.FC = () => {
               
               <button
                 type="submit"
-                disabled={createLoading || !selectedFile || !name.trim()}
+                disabled={createLoading || !selectedFile || !name.trim() || compressing}
                 className="w-full btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {createLoading ? 'Creating...' : 'Create Session'}
+                {createLoading ? 'Creating...' : compressing ? 'Processing Image...' : 'Create Session'}
               </button>
             </form>
           </div>
