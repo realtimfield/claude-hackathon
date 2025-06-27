@@ -30,8 +30,9 @@ const PuzzlePiece: React.FC<PuzzlePieceProps> = ({
   const updateTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
-    // Check if this is a snap movement (significant position change while not dragging)
-    if (!isDragging && (piece.currentX !== currentPosition.x || piece.currentY !== currentPosition.y)) {
+    // Only update local position from Redux when not dragging
+    if (!isDragging) {
+      // Check if this is a snap movement (significant position change)
       const dx = Math.abs(piece.currentX - currentPosition.x)
       const dy = Math.abs(piece.currentY - currentPosition.y)
       
@@ -40,9 +41,10 @@ const PuzzlePiece: React.FC<PuzzlePieceProps> = ({
         setIsSnapping(true)
         setTimeout(() => setIsSnapping(false), 300) // Match transition duration
       }
+      
+      setCurrentPosition({ x: piece.currentX, y: piece.currentY })
     }
-    setCurrentPosition({ x: piece.currentX, y: piece.currentY })
-  }, [piece.currentX, piece.currentY, isDragging, currentPosition.x, currentPosition.y])
+  }, [piece.currentX, piece.currentY, isDragging])
 
   // Throttled move function that only sends updates every 100ms
   const throttledMove = useCallback((pieceId: number, x: number, y: number) => {
@@ -145,10 +147,14 @@ const PuzzlePiece: React.FC<PuzzlePieceProps> = ({
     onLock(piece.id)
   }
 
+  // Use local position when dragging for immediate feedback
+  const displayX = isDragging ? currentPosition.x : piece.currentX
+  const displayY = isDragging ? currentPosition.y : piece.currentY
+
   const pieceStyle: React.CSSProperties = {
     position: 'absolute',
-    left: `${piece.currentX}px`,
-    top: `${piece.currentY}px`,
+    left: `${displayX}px`,
+    top: `${displayY}px`,
     width: `${piece.width}px`,
     height: `${piece.height}px`,
     backgroundImage: `url(${piece.imageUrl})`,
