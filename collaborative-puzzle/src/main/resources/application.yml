@@ -1,0 +1,42 @@
+spring:
+  application:
+    name: collaborative-puzzle
+  
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+    timeout: 60000
+    jedis:
+      pool:
+        max-active: 10
+        max-idle: 8
+        min-idle: 0
+        max-wait: -1ms
+  
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+  
+  web:
+    resources:
+      static-locations: classpath:/static/
+      cache:
+        period: 0
+
+server:
+  port: ${SERVER_PORT:8080}
+
+puzzle:
+  session:
+    expiration: 86400 # 24 hours in seconds
+  piece:
+    snap-threshold: 80 # pixels - increased for better snapping with large pieces
+  grid:
+    sizes: 3,5,8 # available grid sizes
+
+logging:
+  level:
+    com.puzzle: DEBUG
+    org.springframework.web.socket: DEBUG

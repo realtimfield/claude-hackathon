@@ -1,0 +1,53 @@
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Build output
+build/
+dist/
+target/
+bin/
+obj/
+*.class
+*.jar
+*.war
+*.ear
+
+# Claude local settings
+.claude/settings.local.json
+.claude/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Package manager directories
+node_modules/
+vendor/
+.gradle/
+.mvn/
+collaborative-puzzle/frontend/node/node
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+venv/
+env/
+.venv/
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+.cache/
