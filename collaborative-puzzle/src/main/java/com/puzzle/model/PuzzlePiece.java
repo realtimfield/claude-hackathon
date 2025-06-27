@@ -25,4 +25,7 @@ public class PuzzlePiece implements Serializable {
     private String placedBy; // User ID who correctly placed this piece
     private int rotation; // Current rotation in degrees (0, 90, 180, 270)
     private int correctRotation; // Always 0 for correct orientation
+    
+    // Jigsaw shape fields
+    private PieceShape shape; // Complete piece outline with 4 edges
 }

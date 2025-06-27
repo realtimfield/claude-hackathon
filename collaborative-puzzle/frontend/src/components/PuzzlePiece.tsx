@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react'
-import { PuzzlePiece as PuzzlePieceType } from '../types/types'
+import { PuzzlePiece as PuzzlePieceType, PieceShape } from '../types/types'
 
 interface PuzzlePieceProps {
   piece: PuzzlePieceType
@@ -179,22 +179,149 @@ const PuzzlePiece: React.FC<PuzzlePieceProps> = ({
   // Use local position when dragging for immediate feedback
   const displayX = isDragging ? currentPosition.x : piece.currentX
   const displayY = isDragging ? currentPosition.y : piece.currentY
-
+  
   const pieceStyle: React.CSSProperties = {
     position: 'absolute',
     left: `${displayX}px`,
     top: `${displayY}px`,
     width: `${piece.width}px`,
     height: `${piece.height}px`,
-    backgroundImage: `url(${piece.imageUrl})`,
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
     cursor: isLocked ? 'not-allowed' : isDragging ? 'grabbing' : 'grab',
     zIndex: isDragging ? 1000 : 10,
     opacity: 1,
     transition: isSnapping ? 'left 0.3s ease, top 0.3s ease, transform 0.2s ease' : 'transform 0.2s ease',
     transform: `rotate(${displayRotation}deg)`,
     transformOrigin: 'center',
+  }
+
+  // Generate jigsaw piece SVG path based on edge types
+  const generateJigsawPath = (width: number, height: number, shape?: PieceShape): string => {
+    if (!shape) {
+      return `M 0,0 L ${width},0 L ${width},${height} L 0,${height} Z`
+    }
+
+    const path: string[] = []
+    
+    // Start at top-left
+    path.push(`M 0,0`)
+    
+    // Top edge
+    if (shape.topEdge.type === 'FLAT') {
+      path.push(`L ${width},0`)
+    } else {
+      const isTab = shape.topEdge.type === 'TAB'
+      const depth = height * 0.2 * (isTab ? -1 : 1)
+      const tabWidth = width * 0.4
+      const centerX = width * 0.5
+      const startX = centerX - tabWidth * 0.5
+      const endX = centerX + tabWidth * 0.5
+      
+      path.push(`L ${startX},0`)
+      path.push(`C ${startX},0 ${startX},${depth * 0.3} ${centerX - tabWidth * 0.25},${depth * 0.8}`)
+      path.push(`C ${centerX - tabWidth * 0.1},${depth} ${centerX + tabWidth * 0.1},${depth} ${centerX + tabWidth * 0.25},${depth * 0.8}`)
+      path.push(`C ${endX},${depth * 0.3} ${endX},0 ${endX},0`)
+      path.push(`L ${width},0`)
+    }
+    
+    // Right edge
+    if (shape.rightEdge.type === 'FLAT') {
+      path.push(`L ${width},${height}`)
+    } else {
+      const isTab = shape.rightEdge.type === 'TAB'
+      const depth = width * 0.2 * (isTab ? 1 : -1)
+      const tabWidth = height * 0.4
+      const centerY = height * 0.5
+      const startY = centerY - tabWidth * 0.5
+      const endY = centerY + tabWidth * 0.5
+      
+      path.push(`L ${width},${startY}`)
+      path.push(`C ${width},${startY} ${width + depth * 0.3},${startY} ${width + depth * 0.8},${centerY - tabWidth * 0.25}`)
+      path.push(`C ${width + depth},${centerY - tabWidth * 0.1} ${width + depth},${centerY + tabWidth * 0.1} ${width + depth * 0.8},${centerY + tabWidth * 0.25}`)
+      path.push(`C ${width + depth * 0.3},${endY} ${width},${endY} ${width},${endY}`)
+      path.push(`L ${width},${height}`)
+    }
+    
+    // Bottom edge
+    if (shape.bottomEdge.type === 'FLAT') {
+      path.push(`L 0,${height}`)
+    } else {
+      const isTab = shape.bottomEdge.type === 'TAB'
+      const depth = height * 0.2 * (isTab ? 1 : -1)
+      const tabWidth = width * 0.4
+      const centerX = width * 0.5
+      const startX = centerX + tabWidth * 0.5
+      const endX = centerX - tabWidth * 0.5
+      
+      path.push(`L ${startX},${height}`)
+      path.push(`C ${startX},${height} ${startX},${height + depth * 0.3} ${centerX + tabWidth * 0.25},${height + depth * 0.8}`)
+      path.push(`C ${centerX + tabWidth * 0.1},${height + depth} ${centerX - tabWidth * 0.1},${height + depth} ${centerX - tabWidth * 0.25},${height + depth * 0.8}`)
+      path.push(`C ${endX},${height + depth * 0.3} ${endX},${height} ${endX},${height}`)
+      path.push(`L 0,${height}`)
+    }
+    
+    // Left edge
+    if (shape.leftEdge.type === 'FLAT') {
+      path.push(`L 0,0`)
+    } else {
+      const isTab = shape.leftEdge.type === 'TAB'
+      const depth = width * 0.2 * (isTab ? -1 : 1)
+      const tabWidth = height * 0.4
+      const centerY = height * 0.5
+      const startY = centerY + tabWidth * 0.5
+      const endY = centerY - tabWidth * 0.5
+      
+      path.push(`L 0,${startY}`)
+      path.push(`C 0,${startY} ${depth * 0.3},${startY} ${depth * 0.8},${centerY + tabWidth * 0.25}`)
+      path.push(`C ${depth},${centerY + tabWidth * 0.1} ${depth},${centerY - tabWidth * 0.1} ${depth * 0.8},${centerY - tabWidth * 0.25}`)
+      path.push(`C ${depth * 0.3},${endY} 0,${endY} 0,${endY}`)
+      path.push(`L 0,0`)
+    }
+    
+    path.push('Z')
+    return path.join(' ')
+  }
+
+
+  // Render SVG-based jigsaw piece
+  const renderJigsawPiece = () => {
+    const jigsawPath = generateJigsawPath(piece.width, piece.height, piece.shape)
+    
+    // The backend now provides larger images with 25% extension on each side
+    const extensionFactor = 0.25
+    const totalScale = 1 + (extensionFactor * 2) // 1.5x total size
+    const offset = piece.width * extensionFactor
+    
+    return (
+      <svg
+        width={piece.width}
+        height={piece.height}
+        className="absolute top-0 left-0"
+        style={{ overflow: 'visible' }}
+      >
+        <defs>
+          <clipPath id={`piece-clip-${piece.id}`}>
+            <path d={jigsawPath} />
+          </clipPath>
+        </defs>
+        <image
+          href={piece.imageUrl}
+          x={-offset}
+          y={-offset}
+          width={piece.width * totalScale}
+          height={piece.height * totalScale}
+          clipPath={`url(#piece-clip-${piece.id})`}
+          style={{ pointerEvents: 'none' }}
+        />
+        {/* Show piece outline */}
+        <path
+          d={jigsawPath}
+          fill="none"
+          stroke="rgba(0, 0, 0, 0.3)"
+          strokeWidth="1"
+          style={{ pointerEvents: 'none' }}
+        />
+      </svg>
+    )
   }
 
   return (
@@ -206,7 +333,7 @@ const PuzzlePiece: React.FC<PuzzlePieceProps> = ({
       onMouseEnter={onHover}
       onMouseLeave={onHoverEnd}
     >
-      <div className="absolute inset-0 border border-gray-300 rounded-md pointer-events-none" />
+      {renderJigsawPiece()}
     </div>
   )
 }

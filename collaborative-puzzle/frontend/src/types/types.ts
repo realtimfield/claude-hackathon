@@ -22,6 +22,38 @@ export interface PuzzlePiece {
   placedBy: string | null
   rotation: number
   correctRotation: number
+  // Jigsaw shape fields
+  shape?: PieceShape
+  svgPath?: string
+  expandedBounds?: BoundingBox
+  shapedImageUrl?: string
+  gridSize?: number
+}
+
+export interface BoundingBox {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+export interface PieceShape {
+  topEdge: EdgeCurve
+  rightEdge: EdgeCurve
+  bottomEdge: EdgeCurve
+  leftEdge: EdgeCurve
+  svgPath?: string
+  expandedBounds?: BoundingBox
+}
+
+export interface EdgeCurve {
+  type: EdgeType
+}
+
+export enum EdgeType {
+  FLAT = 'FLAT',
+  TAB = 'TAB',
+  CUTOUT = 'CUTOUT'
 }
 
 export interface PuzzleSession {
@@ -51,6 +83,9 @@ export enum MessageType {
   PIECE_RELEASE = 'PIECE_RELEASE',
   PIECE_PLACED = 'PIECE_PLACED',
   PIECE_ROTATE = 'PIECE_ROTATE',
+  PIECE_CONNECT = 'PIECE_CONNECT',
+  PIECE_DISCONNECT = 'PIECE_DISCONNECT',
+  GROUP_MOVE = 'GROUP_MOVE',
   CURSOR_MOVE = 'CURSOR_MOVE',
   PUZZLE_COMPLETE = 'PUZZLE_COMPLETE',
   SESSION_STATE = 'SESSION_STATE'

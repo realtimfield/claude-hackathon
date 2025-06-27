@@ -3,6 +3,7 @@ package com.puzzle.service;
 import com.puzzle.model.PuzzlePiece;
 import com.puzzle.model.PuzzleSession;
 import com.puzzle.model.User;
+import com.puzzle.model.PieceShape;
 import com.puzzle.repository.ImageRepository;
 import com.puzzle.repository.PuzzleSessionRepository;
 import net.coobird.thumbnailator.Thumbnails;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.imageio.ImageIO;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -27,6 +29,13 @@ public class PuzzleService {
     
     @Autowired
     private ImageRepository imageRepository;
+    
+    @Autowired
+    private ShapeGenerationService shapeGenerationService;
+    
+    
+    @Autowired
+    private EdgeSnappingService edgeSnappingService;
     
     @Value("${puzzle.piece.snap-threshold}")
     private int snapThreshold;
@@ -76,22 +85,31 @@ public class PuzzleService {
         session.setImageWidth(resizedImage.getWidth());
         session.setImageHeight(resizedImage.getHeight());
         
+        // Generate jigsaw shapes for all pieces
+        PieceShape[][] shapes = shapeGenerationService.generatePuzzleShapes(gridSize, gridSize);
+        
         // Create puzzle pieces and cut the image
-        List<PuzzlePiece> pieces = createPuzzlePieces(gridSize, resizedImage.getWidth(), resizedImage.getHeight());
+        java.util.List<PuzzlePiece> pieces = createPuzzlePieces(gridSize, resizedImage.getWidth(), resizedImage.getHeight());
         cutImageIntoPieces(resizedImage, pieces, gridSize);
+        
+        // Assign shapes to pieces
+        for (PuzzlePiece piece : pieces) {
+            piece.setShape(shapes[piece.getRow()][piece.getCol()]);
+        }
+        
         session.setPieces(pieces);
         
         sessionRepository.save(session);
         return session;
     }
     
-    private List<PuzzlePiece> createPuzzlePieces(int gridSize, int imageWidth, int imageHeight) {
-        List<PuzzlePiece> pieces = new ArrayList<>();
+    private java.util.List<PuzzlePiece> createPuzzlePieces(int gridSize, int imageWidth, int imageHeight) {
+        java.util.List<PuzzlePiece> pieces = new ArrayList<>();
         int pieceWidth = imageWidth / gridSize;
         int pieceHeight = imageHeight / gridSize;
         
         // Create pieces in random positions
-        List<Integer> positions = new ArrayList<>();
+        java.util.List<Integer> positions = new ArrayList<>();
         for (int i = 0; i < gridSize * gridSize; i++) {
             positions.add(i);
         }
@@ -154,21 +172,43 @@ public class PuzzleService {
         return pieces;
     }
     
-    private void cutImageIntoPieces(BufferedImage originalImage, List<PuzzlePiece> pieces, int gridSize) {
+    
+    private void cutImageIntoPieces(BufferedImage originalImage, java.util.List<PuzzlePiece> pieces, int gridSize) {
         int pieceWidth = originalImage.getWidth() / gridSize;
         int pieceHeight = originalImage.getHeight() / gridSize;
         
+        // Extension factor for tabs (25% on each side)
+        double extensionFactor = 0.25;
+        int extension = (int) (Math.max(pieceWidth, pieceHeight) * extensionFactor);
+        
         for (PuzzlePiece piece : pieces) {
             try {
-                // Extract the piece from the original image
-                int x = piece.getCol() * pieceWidth;
-                int y = piece.getRow() * pieceHeight;
+                // Calculate extended bounds for piece extraction
+                int x = piece.getCol() * pieceWidth - extension;
+                int y = piece.getRow() * pieceHeight - extension;
+                int extractWidth = pieceWidth + (extension * 2);
+                int extractHeight = pieceHeight + (extension * 2);
                 
-                // Handle edge pieces that might be slightly larger due to rounding
-                int actualWidth = Math.min(pieceWidth, originalImage.getWidth() - x);
-                int actualHeight = Math.min(pieceHeight, originalImage.getHeight() - y);
+                // Clamp to image bounds
+                int sourceX = Math.max(0, x);
+                int sourceY = Math.max(0, y);
+                int sourceWidth = Math.min(extractWidth, originalImage.getWidth() - sourceX);
+                int sourceHeight = Math.min(extractHeight, originalImage.getHeight() - sourceY);
                 
-                BufferedImage pieceImage = originalImage.getSubimage(x, y, actualWidth, actualHeight);
+                // Create a larger canvas for the piece
+                BufferedImage pieceImage = new BufferedImage(extractWidth, extractHeight, BufferedImage.TYPE_INT_RGB);
+                Graphics2D g2d = pieceImage.createGraphics();
+                
+                // Fill with a neutral color for areas outside the image
+                g2d.setColor(Color.LIGHT_GRAY);
+                g2d.fillRect(0, 0, extractWidth, extractHeight);
+                
+                // Draw the extracted portion
+                int destX = sourceX - x;
+                int destY = sourceY - y;
+                g2d.drawImage(originalImage.getSubimage(sourceX, sourceY, sourceWidth, sourceHeight), 
+                             destX, destY, null);
+                g2d.dispose();
                 
                 // Save the piece image with compression
                 String pieceImageId = UUID.randomUUID().toString();
@@ -251,7 +291,7 @@ public class PuzzleService {
             return false;
         }
         
-        // Just update position without snapping during drag
+        // Just update position without connected piece movement for now
         piece.setCurrentX(x);
         piece.setCurrentY(y);
         
@@ -279,66 +319,40 @@ public class PuzzleService {
             return false;
         }
         
-        // Calculate piece dimensions
+        // Use simplified grid-based snapping (original logic)
         int pieceWidth = session.getImageWidth() / session.getGridSize();
         int pieceHeight = session.getImageHeight() / session.getGridSize();
         
         // Calculate the target area offset (where puzzle should be assembled)
-        int targetAreaX = 50; // matches the frontend positioning
+        int targetAreaX = 50;
         int targetAreaY = 50;
         
         // Calculate center of the piece for snapping
         double pieceCenterX = x + (pieceWidth / 2.0);
         double pieceCenterY = y + (pieceHeight / 2.0);
         
-        // Find the closest grid position by checking all nearby candidates
-        int baseCol = (int)Math.floor((pieceCenterX - targetAreaX) / (double)pieceWidth);
-        int baseRow = (int)Math.floor((pieceCenterY - targetAreaY) / (double)pieceHeight);
+        // Find the closest grid position
+        int nearestCol = (int) Math.round((pieceCenterX - targetAreaX) / (double) pieceWidth);
+        int nearestRow = (int) Math.round((pieceCenterY - targetAreaY) / (double) pieceHeight);
         
-        int nearestCol = -1;
-        int nearestRow = -1;
-        double minDistance = Double.MAX_VALUE;
+        // Clamp to grid bounds
+        nearestCol = Math.max(0, Math.min(nearestCol, session.getGridSize() - 1));
+        nearestRow = Math.max(0, Math.min(nearestRow, session.getGridSize() - 1));
         
-        // Check 4 nearby grid cells (current cell and adjacent ones)
-        for (int colOffset = 0; colOffset <= 1; colOffset++) {
-            for (int rowOffset = 0; rowOffset <= 1; rowOffset++) {
-                int testCol = baseCol + colOffset;
-                int testRow = baseRow + rowOffset;
-                
-                // Skip if outside grid bounds
-                if (testCol < 0 || testCol >= session.getGridSize() || 
-                    testRow < 0 || testRow >= session.getGridSize()) {
-                    continue;
-                }
-                
-                // Calculate distance to this grid cell center
-                double gridCenterX = targetAreaX + testCol * pieceWidth + (pieceWidth / 2.0);
-                double gridCenterY = targetAreaY + testRow * pieceHeight + (pieceHeight / 2.0);
-                double dist = Math.sqrt(
-                    Math.pow(pieceCenterX - gridCenterX, 2) + 
-                    Math.pow(pieceCenterY - gridCenterY, 2)
-                );
-                
-                if (dist < minDistance) {
-                    minDistance = dist;
-                    nearestCol = testCol;
-                    nearestRow = testRow;
-                }
-            }
-        }
-        
-        // Calculate snap position (top-left corner of the grid cell)
+        // Calculate snap position
         double snapX = targetAreaX + nearestCol * pieceWidth;
         double snapY = targetAreaY + nearestRow * pieceHeight;
         
-        double distance = minDistance;
+        // Calculate distance
+        double distance = Math.sqrt(Math.pow(pieceCenterX - (snapX + pieceWidth/2.0), 2) + 
+                                   Math.pow(pieceCenterY - (snapY + pieceHeight/2.0), 2));
         
         if (distance <= snapThreshold) {
             // Snap to grid position
             piece.setCurrentX(snapX);
             piece.setCurrentY(snapY);
             
-            // Check if it's the correct position AND rotation, then mark as placed
+            // Check if it's the correct position AND rotation
             if (nearestCol == piece.getCol() && nearestRow == piece.getRow() && 
                 piece.getRotation() == piece.getCorrectRotation()) {
                 // Only set placedBy if it wasn't already placed
@@ -347,7 +361,7 @@ public class PuzzleService {
                 }
                 piece.setPlaced(true);
                 
-                // Check if puzzle is complete (all pieces placed and correctly rotated)
+                // Check if puzzle is complete
                 boolean allPlaced = session.getPieces().stream()
                     .allMatch(p -> p.isPlaced() && p.getRotation() == p.getCorrectRotation());
                 if (allPlaced) {
