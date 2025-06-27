@@ -230,7 +230,12 @@ const PuzzleGame: React.FC = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-2xl text-gray-600">Loading puzzle...</div>
+        <div className="text-center animate-fadeIn">
+          <div className="animate-pulse">
+            <div className="w-16 h-16 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full mx-auto mb-4"></div>
+          </div>
+          <div className="text-2xl text-gray-700 font-medium">Loading puzzle...</div>
+        </div>
       </div>
     )
   }
@@ -238,7 +243,7 @@ const PuzzleGame: React.FC = () => {
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-2xl text-red-600">{error}</div>
+        <div className="text-2xl text-red-600 bg-red-50 px-6 py-4 rounded-xl animate-fadeIn">{error}</div>
       </div>
     )
   }
@@ -248,23 +253,23 @@ const PuzzleGame: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex">
+    <div className="min-h-screen flex">
       {/* Left sidebar for players */}
-      <div className="w-64 bg-white shadow-md p-4">
-        <h3 className="text-lg font-semibold mb-4">Players</h3>
-        <div className="space-y-2">
+      <div className="w-64 glass-morphism shadow-xl p-6 animate-slideInLeft">
+        <h3 className="text-xl font-bold mb-4 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">Players</h3>
+        <div className="space-y-3">
           {Object.values(session.users).map((user) => (
             <div
               key={user.id}
-              className="flex items-center gap-2 p-2 bg-gray-100 rounded"
+              className="flex items-center gap-3 p-3 bg-white/30 rounded-xl transition-all hover:bg-white/40"
             >
               <span
-                className="w-3 h-3 rounded-full flex-shrink-0"
-                style={{ backgroundColor: user.color }}
+                className="w-4 h-4 rounded-full flex-shrink-0 shadow-sm"
+                style={{ backgroundColor: user.color, boxShadow: `0 0 10px ${user.color}40` }}
               />
-              <span className="text-sm truncate">
+              <span className="text-sm font-medium text-gray-700 truncate">
                 {user.name}
-                {user.id === currentUser.id && ' (You)'}
+                {user.id === currentUser.id && <span className="text-purple-600 font-semibold"> (You)</span>}
               </span>
             </div>
           ))}
@@ -272,50 +277,54 @@ const PuzzleGame: React.FC = () => {
       </div>
 
       {/* Main content area */}
-      <div className="flex-1 p-4">
-        <div className="bg-white rounded-lg shadow-md p-4 mb-4">
+      <div className="flex-1 p-6">
+        <div className="glass-morphism rounded-2xl shadow-xl p-6 mb-6 animate-fadeIn">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-2xl font-bold text-gray-800">Collaborative Puzzle</h1>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-1">Collaborative Puzzle</h1>
               <p className="text-gray-600">
-                Session: {sessionId} | Grid: {session.gridSize}x{session.gridSize}
+                <span className="font-medium">Session:</span> <code className="bg-gray-100 px-2 py-1 rounded text-sm">{sessionId?.slice(0, 8)}...</code> | 
+                <span className="font-medium ml-2">Grid:</span> {session.gridSize}×{session.gridSize}
               </p>
             </div>
             <div className="text-right">
               <p className="text-gray-700 font-semibold">{currentUser.name}</p>
               <span
-                className="inline-block w-4 h-4 rounded-full mt-1"
-                style={{ backgroundColor: currentUser.color }}
+                className="inline-block w-6 h-6 rounded-full mt-2 shadow-md"
+                style={{ backgroundColor: currentUser.color, boxShadow: `0 2px 10px ${currentUser.color}60` }}
               />
             </div>
           </div>
         </div>
 
         {isCompleted && (
-          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4 text-center">
-            <h2 className="text-xl font-bold">Puzzle Complete!</h2>
-            <p>Great job! You solved the puzzle together!</p>
+          <div className="glass-morphism bg-gradient-to-r from-green-400/20 to-blue-400/20 border border-green-200 px-6 py-4 rounded-2xl mb-6 text-center animate-fadeIn">
+            <h2 className="text-2xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent mb-1">🎉 Puzzle Complete!</h2>
+            <p className="text-gray-700">Great job! You solved the puzzle together!</p>
           </div>
         )}
 
         <div
           ref={containerRef}
-          className="relative bg-gray-200 rounded-lg shadow-inner mx-auto"
+          className="relative bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl shadow-inner mx-auto"
           style={{
             width: '1200px',
             height: '800px',
             overflow: 'hidden',
+            boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.1)',
           }}
           onMouseMove={throttledHandleMouseMove}
         >
           {/* Puzzle area outline */}
           <div
-            className="absolute border-2 border-gray-600"
+            className="absolute border-2 border-gray-400 rounded-lg"
             style={{
               width: `${session.imageWidth}px`,
               height: `${session.imageHeight}px`,
               left: '50px',
               top: '50px',
+              borderStyle: 'dashed',
+              opacity: 0.5,
             }}
           />
 
@@ -342,13 +351,13 @@ const PuzzleGame: React.FC = () => {
 
         {/* Thumbnail of complete image */}
         <div 
-          className="fixed bottom-4 left-4 bg-white rounded-lg shadow-lg p-2"
+          className="fixed bottom-6 left-6 glass-morphism rounded-2xl shadow-xl p-3 card-hover animate-fadeIn"
           style={{ zIndex: 50 }}
         >
           <img 
             src={session.imageUrl} 
             alt="Complete puzzle"
-            className="rounded"
+            className="rounded-xl shadow-md"
             style={{
               width: '150px',
               height: 'auto',
@@ -356,19 +365,19 @@ const PuzzleGame: React.FC = () => {
               objectFit: 'contain'
             }}
           />
-          <p className="text-xs text-gray-600 text-center mt-1">Reference</p>
+          <p className="text-xs text-gray-600 text-center mt-2 font-medium">Reference Image</p>
         </div>
 
         {/* Scoreboard Modal */}
         {showScoreboard && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="relative">
+          <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn">
+            <div className="relative animate-fadeIn" style={{ animationDelay: '0.1s' }}>
               <Scoreboard session={session} />
               <button
                 onClick={() => setShowScoreboard(false)}
-                className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
+                className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 transition-colors bg-white/80 rounded-full w-8 h-8 flex items-center justify-center shadow-md hover:shadow-lg"
               >
-                ✕
+                <span className="text-xl leading-none">×</span>
               </button>
             </div>
           </div>

@@ -167,7 +167,7 @@ const PuzzlePiece: React.FC<PuzzlePieceProps> = ({
       style={pieceStyle}
       onMouseDown={handleMouseDown}
     >
-      <div className="absolute inset-0 border border-gray-400 pointer-events-none" />
+      <div className="absolute inset-0 border border-gray-300 rounded-md pointer-events-none" />
     </div>
   )
 }

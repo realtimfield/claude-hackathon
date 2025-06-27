@@ -97,28 +97,31 @@ const Home: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-      <div className="max-w-4xl w-full">
-        <h1 className="text-4xl font-bold text-center mb-8 text-gray-800">
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="max-w-4xl w-full animate-fadeIn">
+        <h1 className="text-5xl font-bold text-center mb-2 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
           Collaborative Jigsaw Puzzle
         </h1>
+        <p className="text-center text-gray-600 mb-8">
+          Solve puzzles together with friends in real-time
+        </p>
         
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-4 animate-fadeIn">
             {error}
           </div>
         )}
         
         {/* Common name input */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <label className="block text-gray-700 text-sm font-bold mb-2">
+        <div className="glass-morphism rounded-2xl shadow-xl p-6 mb-6 card-hover">
+          <label className="block text-gray-700 text-sm font-semibold mb-3">
             Your Name
           </label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-3 bg-white/50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
             placeholder="Enter your name"
             required
           />
@@ -126,23 +129,23 @@ const Home: React.FC = () => {
         
         <div className="grid md:grid-cols-2 gap-6">
           {/* Join existing session */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-2xl font-semibold mb-4 text-gray-700">Join Session</h2>
+          <div className="glass-morphism rounded-2xl shadow-xl p-6 card-hover">
+            <h2 className="text-2xl font-semibold mb-4 bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">Join Session</h2>
             <form onSubmit={handleJoinSession}>
               
               <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2">
+                <label className="block text-gray-700 text-sm font-semibold mb-3">
                   Session ID
                 </label>
                 <input
                   type="text"
                   value={sessionId}
                   onChange={(e) => setSessionId(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-3 bg-white/50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   placeholder="Enter session ID"
                   required
                 />
-                <p className="text-xs text-gray-600 mt-1">
+                <p className="text-xs text-gray-500 mt-2">
                   Or visit the shared link directly
                 </p>
               </div>
@@ -150,7 +153,7 @@ const Home: React.FC = () => {
               <button
                 type="submit"
                 disabled={joinLoading || !name.trim()}
-                className="w-full bg-blue-500 text-white font-bold py-2 px-4 rounded hover:bg-blue-600 disabled:bg-gray-400"
+                className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {joinLoading ? 'Joining...' : 'Join Session'}
               </button>
@@ -158,34 +161,36 @@ const Home: React.FC = () => {
           </div>
           
           {/* Create new session */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-2xl font-semibold mb-4 text-gray-700">Create New Session</h2>
+          <div className="glass-morphism rounded-2xl shadow-xl p-6 card-hover">
+            <h2 className="text-2xl font-semibold mb-4 bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">Create New Session</h2>
             <form onSubmit={handleCreateSession}>
               
               <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2">
+                <label className="block text-gray-700 text-sm font-semibold mb-3">
                   Upload Image
                 </label>
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png"
-                  onChange={handleFileChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-                <p className="text-sm text-gray-600 mt-1">
+                <div className="relative">
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png"
+                    onChange={handleFileChange}
+                    className="w-full px-4 py-3 bg-white/50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
+                    required
+                  />
+                </div>
+                <p className="text-sm text-gray-500 mt-2">
                   JPG or PNG, max 10MB
                 </p>
               </div>
               
               <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2">
+                <label className="block text-gray-700 text-sm font-semibold mb-3">
                   Grid Size
                 </label>
                 <select
                   value={gridSize}
                   onChange={(e) => setGridSize(Number(e.target.value))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-3 bg-white/50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all"
                 >
                   <option value={3}>3x3 (9 pieces)</option>
                   <option value={5}>5x5 (25 pieces)</option>
@@ -196,7 +201,7 @@ const Home: React.FC = () => {
               <button
                 type="submit"
                 disabled={createLoading || !selectedFile || !name.trim()}
-                className="w-full bg-green-500 text-white font-bold py-2 px-4 rounded hover:bg-green-600 disabled:bg-gray-400"
+                className="w-full btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {createLoading ? 'Creating...' : 'Create Session'}
               </button>
