@@ -331,23 +331,63 @@ public class PuzzleService {
         double pieceCenterX = x + (pieceWidth / 2.0);
         double pieceCenterY = y + (pieceHeight / 2.0);
         
-        // Find the closest grid position
-        int nearestCol = (int) Math.round((pieceCenterX - targetAreaX) / (double) pieceWidth);
-        int nearestRow = (int) Math.round((pieceCenterY - targetAreaY) / (double) pieceHeight);
+        // Find the closest grid position by checking all nearby grid cells
+        double minDistance = Double.MAX_VALUE;
+        int bestCol = -1;
+        int bestRow = -1;
         
-        // Clamp to grid bounds
-        nearestCol = Math.max(0, Math.min(nearestCol, session.getGridSize() - 1));
-        nearestRow = Math.max(0, Math.min(nearestRow, session.getGridSize() - 1));
+        // Calculate rough position to limit search area
+        int centerCol = (int) Math.round((pieceCenterX - targetAreaX) / (double) pieceWidth);
+        int centerRow = (int) Math.round((pieceCenterY - targetAreaY) / (double) pieceHeight);
+        
+        // Check nearby grid positions (including diagonals)
+        for (int row = centerRow - 1; row <= centerRow + 1; row++) {
+            for (int col = centerCol - 1; col <= centerCol + 1; col++) {
+                // Skip out-of-bounds positions
+                if (row < 0 || row >= session.getGridSize() || 
+                    col < 0 || col >= session.getGridSize()) {
+                    continue;
+                }
+                
+                // Calculate the center of this grid position
+                double gridCenterX = targetAreaX + col * pieceWidth + pieceWidth / 2.0;
+                double gridCenterY = targetAreaY + row * pieceHeight + pieceHeight / 2.0;
+                
+                // Calculate distance from piece center to grid center
+                double dist = Math.sqrt(Math.pow(pieceCenterX - gridCenterX, 2) + 
+                                      Math.pow(pieceCenterY - gridCenterY, 2));
+                
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    bestCol = col;
+                    bestRow = row;
+                }
+            }
+        }
+        
+        // If we found a valid position, use it
+        int nearestCol = bestCol >= 0 ? bestCol : 0;
+        int nearestRow = bestRow >= 0 ? bestRow : 0;
         
         // Calculate snap position
         double snapX = targetAreaX + nearestCol * pieceWidth;
         double snapY = targetAreaY + nearestRow * pieceHeight;
         
-        // Calculate distance
-        double distance = Math.sqrt(Math.pow(pieceCenterX - (snapX + pieceWidth/2.0), 2) + 
-                                   Math.pow(pieceCenterY - (snapY + pieceHeight/2.0), 2));
+        // Use the minimum distance we already calculated
+        double distance = minDistance;
         
-        if (distance <= snapThreshold) {
+        // Log snapping details for debugging
+        System.out.println(String.format("Piece %d: Center(%.1f, %.1f), Nearest(%d,%d), SnapPos(%.1f,%.1f), Distance: %.1f, Threshold: %d, Rotation: %d", 
+            pieceId, pieceCenterX, pieceCenterY, nearestCol, nearestRow, snapX, snapY, distance, snapThreshold, piece.getRotation()));
+        
+        // For rotated pieces, we might need a slightly larger threshold due to visual/logical bounds mismatch
+        int effectiveThreshold = snapThreshold;
+        if (piece.getRotation() % 180 != 0) {
+            // For 90 and 270 degree rotations, increase threshold slightly
+            effectiveThreshold = (int)(snapThreshold * 1.2);
+        }
+        
+        if (distance <= effectiveThreshold) {
             // Snap to grid position
             piece.setCurrentX(snapX);
             piece.setCurrentY(snapY);
