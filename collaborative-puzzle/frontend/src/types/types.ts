@@ -20,6 +20,8 @@ export interface PuzzlePiece {
   isPlaced: boolean
   lockedBy: string | null
   placedBy: string | null
+  rotation: number
+  correctRotation: number
 }
 
 export interface PuzzleSession {
@@ -48,6 +50,7 @@ export enum MessageType {
   PIECE_UNLOCK = 'PIECE_UNLOCK',
   PIECE_RELEASE = 'PIECE_RELEASE',
   PIECE_PLACED = 'PIECE_PLACED',
+  PIECE_ROTATE = 'PIECE_ROTATE',
   CURSOR_MOVE = 'CURSOR_MOVE',
   PUZZLE_COMPLETE = 'PUZZLE_COMPLETE',
   SESSION_STATE = 'SESSION_STATE'

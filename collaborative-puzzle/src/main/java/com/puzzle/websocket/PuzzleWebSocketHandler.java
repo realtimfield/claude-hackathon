@@ -100,6 +100,10 @@ public class PuzzleWebSocketHandler extends TextWebSocketHandler {
                 handlePieceRelease(userConn, data);
                 break;
                 
+            case PIECE_ROTATE:
+                handlePieceRotate(userConn, data);
+                break;
+                
             case CURSOR_MOVE:
                 handleCursorMove(userConn, data);
                 break;
@@ -242,6 +246,32 @@ public class PuzzleWebSocketHandler extends TextWebSocketHandler {
             data
         );
         broadcastToOthers(userConn.sessionId, userConn.userId, cursorMessage);
+    }
+    
+    private void handlePieceRotate(UserConnection userConn, Map<String, Object> data) throws Exception {
+        int pieceId = ((Number) data.get("pieceId")).intValue();
+        int direction = ((Number) data.get("direction")).intValue();
+        
+        boolean rotated = puzzleService.rotatePiece(userConn.sessionId, pieceId, direction, userConn.userId);
+        
+        if (rotated) {
+            PuzzleSession session = puzzleService.getSession(userConn.sessionId);
+            PuzzlePiece piece = session.getPieces().stream()
+                .filter(p -> p.getId() == pieceId)
+                .findFirst()
+                .orElse(null);
+            
+            if (piece != null) {
+                data.put("rotation", piece.getRotation());
+                data.put("userId", userConn.userId);
+                
+                WebSocketMessage rotateMessage = new WebSocketMessage(
+                    WebSocketMessage.MessageType.PIECE_ROTATE, 
+                    data
+                );
+                broadcastToAll(userConn.sessionId, rotateMessage);
+            }
+        }
     }
     
     private void broadcastToAll(String sessionId, WebSocketMessage message) throws Exception {

@@ -23,4 +23,6 @@ public class PuzzlePiece implements Serializable {
     private boolean isPlaced;
     private String lockedBy; // User ID who is currently dragging this piece
     private String placedBy; // User ID who correctly placed this piece
+    private int rotation; // Current rotation in degrees (0, 90, 180, 270)
+    private int correctRotation; // Always 0 for correct orientation
 }

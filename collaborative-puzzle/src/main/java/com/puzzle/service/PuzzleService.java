@@ -48,10 +48,13 @@ public class PuzzleService {
             throw new IOException("Failed to read image. The file may be corrupted or in an unsupported format.");
         }
         
-        // Frontend already compressed the image, so we just need to resize for puzzle
+        // Frontend already compressed the image, now resize to square for puzzle
+        // First determine the size - use the smaller dimension to create a square
+        int targetSize = 480; // Square size for the puzzle
+        
         BufferedImage resizedImage = Thumbnails.of(originalImage)
-                .size(500, 400)
-                .keepAspectRatio(true)
+                .size(targetSize, targetSize)
+                .keepAspectRatio(false) // Force square aspect ratio
                 .asBufferedImage();
         
         String imageId = UUID.randomUUID().toString();
@@ -113,7 +116,7 @@ public class PuzzleService {
                 int randomPos = positions.get(pieceId);
                 
                 // Calculate grid arrangement based on available space
-                // With smaller image (500x400), we have more room for pieces
+                // With square image (480x480), we have more room for pieces
                 int scatterStartX = imageWidth + 100; // Start scatter area 100px right of image
                 int maxX = 1150; // Leave 50px margin on the right
                 int availableWidth = maxX - scatterStartX;
@@ -137,6 +140,12 @@ public class PuzzleService {
                 
                 piece.setPlaced(false);
                 piece.setPlacedBy(null); // Initialize as null
+                
+                // Set random initial rotation (0, 90, 180, or 270 degrees)
+                int[] rotations = {0, 90, 180, 270};
+                piece.setRotation(rotations[new Random().nextInt(4)]);
+                piece.setCorrectRotation(0); // Correct orientation is always 0
+                
                 pieces.add(piece);
                 pieceId++;
             }
@@ -329,21 +338,23 @@ public class PuzzleService {
             piece.setCurrentX(snapX);
             piece.setCurrentY(snapY);
             
-            // Check if it's the correct position and mark as placed
-            if (nearestCol == piece.getCol() && nearestRow == piece.getRow()) {
+            // Check if it's the correct position AND rotation, then mark as placed
+            if (nearestCol == piece.getCol() && nearestRow == piece.getRow() && 
+                piece.getRotation() == piece.getCorrectRotation()) {
                 // Only set placedBy if it wasn't already placed
                 if (!piece.isPlaced()) {
                     piece.setPlacedBy(userId);
                 }
                 piece.setPlaced(true);
                 
-                // Check if puzzle is complete
-                boolean allPlaced = session.getPieces().stream().allMatch(PuzzlePiece::isPlaced);
+                // Check if puzzle is complete (all pieces placed and correctly rotated)
+                boolean allPlaced = session.getPieces().stream()
+                    .allMatch(p -> p.isPlaced() && p.getRotation() == p.getCorrectRotation());
                 if (allPlaced) {
                     session.setCompleted(true);
                 }
             } else {
-                // Piece is snapped but not in correct position
+                // Piece is snapped but not in correct position or rotation
                 piece.setPlaced(false);
             }
         } else {
@@ -411,5 +422,50 @@ public class PuzzleService {
             user.setCursorY(y);
             sessionRepository.save(session);
         }
+    }
+    
+    public boolean rotatePiece(String sessionId, int pieceId, int direction, String userId) {
+        PuzzleSession session = sessionRepository.findById(sessionId);
+        if (session == null || session.isCompleted()) {
+            return false;
+        }
+        
+        PuzzlePiece piece = session.getPieces().stream()
+                .filter(p -> p.getId() == pieceId)
+                .findFirst()
+                .orElse(null);
+        
+        if (piece == null) {
+            return false;
+        }
+        
+        // Check if piece is locked by another user
+        if (piece.getLockedBy() != null && !piece.getLockedBy().equals(userId)) {
+            return false;
+        }
+        
+        // Rotate the piece (direction: 1 for clockwise, -1 for counter-clockwise)
+        int currentRotation = piece.getRotation();
+        int newRotation = (currentRotation + direction * 90) % 360;
+        if (newRotation < 0) {
+            newRotation += 360;
+        }
+        piece.setRotation(newRotation);
+        
+        // Check if piece needs to be re-evaluated for placement
+        if (piece.isPlaced()) {
+            // Re-check if it's still correctly placed with new rotation
+            boolean correctPosition = piece.getCol() == (int)((piece.getCurrentX() - 50) / piece.getWidth()) &&
+                                    piece.getRow() == (int)((piece.getCurrentY() - 50) / piece.getHeight());
+            boolean correctRotation = piece.getRotation() == piece.getCorrectRotation();
+            
+            if (!correctPosition || !correctRotation) {
+                piece.setPlaced(false);
+                piece.setPlacedBy(null);
+            }
+        }
+        
+        sessionRepository.save(session);
+        return true;
     }
 }

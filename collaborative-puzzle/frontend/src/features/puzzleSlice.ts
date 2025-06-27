@@ -81,6 +81,14 @@ const puzzleSlice = createSlice({
         state.session.users[action.payload.userId].cursorY = action.payload.y
       }
     },
+    rotatePiece: (state, action: PayloadAction<{ pieceId: number; rotation: number }>) => {
+      if (state.session) {
+        const piece = state.session.pieces.find(p => p.id === action.payload.pieceId)
+        if (piece) {
+          piece.rotation = action.payload.rotation
+        }
+      }
+    },
     setPuzzleComplete: (state) => {
       state.isCompleted = true
       if (state.session) {
@@ -105,6 +113,7 @@ export const {
   addUser,
   removeUser,
   updateUserCursor,
+  rotatePiece,
   setPuzzleComplete,
   setLoading,
   setError,

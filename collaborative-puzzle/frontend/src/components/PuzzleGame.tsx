@@ -11,6 +11,7 @@ import {
   addUser,
   removeUser,
   updateUserCursor,
+  rotatePiece,
   setPuzzleComplete,
   setLoading,
   setError,
@@ -38,6 +39,8 @@ const PuzzleGame: React.FC = () => {
   const [needsToJoin, setNeedsToJoin] = useState(false)
   const [showScoreboard, setShowScoreboard] = useState(false)
   const [copyFeedback, setCopyFeedback] = useState(false)
+  const [hoveredPieceId, setHoveredPieceId] = useState<number | null>(null)
+  const [draggingPieceId, setDraggingPieceId] = useState<number | null>(null)
 
   useEffect(() => {
     if (!sessionId) return
@@ -84,6 +87,39 @@ const PuzzleGame: React.FC = () => {
       window.removeEventListener('scroll', updateContainerOffset)
     }
   }, [session]) // Re-run when session data loads
+
+  // Handle keyboard events for rotation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!session || !currentUser || isCompleted) return
+
+      const key = e.key.toLowerCase()
+      if (key !== 'q' && key !== 'e') return
+
+      // Determine which piece to rotate
+      let pieceIdToRotate: number | null = null
+      
+      if (draggingPieceId !== null) {
+        // If dragging a piece, rotate that piece
+        pieceIdToRotate = draggingPieceId
+      } else if (hoveredPieceId !== null) {
+        // If hovering over a piece, rotate that piece
+        pieceIdToRotate = hoveredPieceId
+      }
+
+      if (pieceIdToRotate !== null) {
+        // Check if the piece is not locked by another user
+        const piece = session.pieces.find(p => p.id === pieceIdToRotate)
+        if (piece && (!piece.lockedBy || piece.lockedBy === currentUser.id)) {
+          const direction = key === 'q' ? -1 : 1
+          sendMessage(MessageType.PIECE_ROTATE, { pieceId: pieceIdToRotate, direction })
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [session, currentUser, isCompleted, draggingPieceId, hoveredPieceId])
 
   const loadSession = async () => {
     try {
@@ -177,6 +213,13 @@ const PuzzleGame: React.FC = () => {
         }))
         break
         
+      case MessageType.PIECE_ROTATE:
+        dispatch(rotatePiece({
+          pieceId: message.data.pieceId,
+          rotation: message.data.rotation,
+        }))
+        break
+        
       case MessageType.PUZZLE_COMPLETE:
         dispatch(setPuzzleComplete())
         setShowScoreboard(true)
@@ -214,14 +257,17 @@ const PuzzleGame: React.FC = () => {
 
   const handlePieceLock = (pieceId: number) => {
     sendMessage(MessageType.PIECE_LOCK, { pieceId })
+    setDraggingPieceId(pieceId)
   }
 
   const handlePieceUnlock = (pieceId: number) => {
     sendMessage(MessageType.PIECE_UNLOCK, { pieceId })
+    setDraggingPieceId(null)
   }
 
   const handlePieceRelease = (pieceId: number, x: number, y: number) => {
     sendMessage(MessageType.PIECE_RELEASE, { pieceId, x, y })
+    setDraggingPieceId(null)
   }
 
   const handleCopyLink = () => {
@@ -365,6 +411,8 @@ const PuzzleGame: React.FC = () => {
               onLock={handlePieceLock}
               onUnlock={handlePieceUnlock}
               onRelease={handlePieceRelease}
+              onHover={() => setHoveredPieceId(piece.id)}
+              onHoverEnd={() => setHoveredPieceId(null)}
               isLocked={(piece.lockedBy !== null && piece.lockedBy !== currentUser.id) || isCompleted}
             />
           ))}

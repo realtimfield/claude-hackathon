@@ -15,10 +15,9 @@ RUN npm install && npm run build
 
 # Now copy backend files
 WORKDIR /app
-COPY pom.xml .
-RUN mvn dependency:go-offline -B
 
 # Copy backend source code
+COPY pom.xml .
 COPY src ./src
 
 # Copy the built frontend files to Spring Boot's static resources

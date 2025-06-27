@@ -8,6 +8,8 @@ interface PuzzlePieceProps {
   onLock: (pieceId: number) => void
   onUnlock: (pieceId: number) => void
   onRelease: (pieceId: number, x: number, y: number) => void
+  onHover: () => void
+  onHoverEnd: () => void
   isLocked: boolean
 }
 
@@ -18,6 +20,8 @@ const PuzzlePiece: React.FC<PuzzlePieceProps> = ({
   onLock,
   onUnlock,
   onRelease,
+  onHover,
+  onHoverEnd,
   isLocked,
 }) => {
   const pieceRef = useRef<HTMLDivElement>(null)
@@ -25,6 +29,7 @@ const PuzzlePiece: React.FC<PuzzlePieceProps> = ({
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   const [currentPosition, setCurrentPosition] = useState({ x: piece.currentX, y: piece.currentY })
   const [isSnapping, setIsSnapping] = useState(false)
+  const [displayRotation, setDisplayRotation] = useState(piece.rotation || 0)
   const lastUpdateRef = useRef<number>(0)
   const pendingUpdateRef = useRef<{ x: number; y: number } | null>(null)
   const updateTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -45,6 +50,30 @@ const PuzzlePiece: React.FC<PuzzlePieceProps> = ({
       setCurrentPosition({ x: piece.currentX, y: piece.currentY })
     }
   }, [piece.currentX, piece.currentY, isDragging])
+
+  // Handle rotation changes to avoid backwards animation
+  useEffect(() => {
+    setDisplayRotation((prevRotation) => {
+      const targetRotation = piece.rotation || 0
+      const currentRotation = prevRotation % 360
+      
+      // Normalize current rotation to 0-359 range
+      const normalizedCurrent = currentRotation < 0 ? currentRotation + 360 : currentRotation
+      
+      // Calculate the difference
+      let diff = targetRotation - normalizedCurrent
+      
+      // Determine shortest path
+      if (diff > 180) {
+        diff = diff - 360
+      } else if (diff < -180) {
+        diff = diff + 360
+      }
+      
+      // Apply the rotation by adding the difference
+      return prevRotation + diff
+    })
+  }, [piece.rotation])
 
   // Throttled move function that only sends updates every 100ms
   const throttledMove = useCallback((pieceId: number, x: number, y: number) => {
@@ -163,7 +192,9 @@ const PuzzlePiece: React.FC<PuzzlePieceProps> = ({
     cursor: isLocked ? 'not-allowed' : isDragging ? 'grabbing' : 'grab',
     zIndex: isDragging ? 1000 : 10,
     opacity: 1,
-    transition: isSnapping ? 'left 0.3s ease, top 0.3s ease' : 'none',
+    transition: isSnapping ? 'left 0.3s ease, top 0.3s ease, transform 0.2s ease' : 'transform 0.2s ease',
+    transform: `rotate(${displayRotation}deg)`,
+    transformOrigin: 'center',
   }
 
   return (
@@ -172,6 +203,8 @@ const PuzzlePiece: React.FC<PuzzlePieceProps> = ({
       className={`puzzle-piece ${piece.isPlaced ? 'placed' : ''} ${isLocked ? 'locked' : ''}`}
       style={pieceStyle}
       onMouseDown={handleMouseDown}
+      onMouseEnter={onHover}
+      onMouseLeave={onHoverEnd}
     >
       <div className="absolute inset-0 border border-gray-300 rounded-md pointer-events-none" />
     </div>

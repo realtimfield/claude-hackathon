@@ -22,6 +22,7 @@ public class WebSocketMessage implements Serializable {
         PIECE_UNLOCK,
         PIECE_RELEASE,
         PIECE_PLACED,
+        PIECE_ROTATE,
         CURSOR_MOVE,
         PUZZLE_COMPLETE,
         SESSION_STATE
