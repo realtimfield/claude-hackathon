@@ -63,7 +63,7 @@ const Home: React.FC = () => {
       
       const newSessionId = createResponse.data.sessionId
       
-      // Join the created session
+      // Join the created session automatically
       const joinResponse = await axios.post(`/api/sessions/${newSessionId}/join`, { name: name.trim() })
       const user = joinResponse.data
       
@@ -77,6 +77,7 @@ const Home: React.FC = () => {
       setLoading(false)
     }
   }
+
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -138,6 +139,9 @@ const Home: React.FC = () => {
                   placeholder="Enter session ID"
                   required
                 />
+                <p className="text-xs text-gray-600 mt-1">
+                  Or visit the shared link directly
+                </p>
               </div>
               
               <button

@@ -20,6 +20,7 @@ import { MessageType, WebSocketMessage } from '../types/types'
 import axios from 'axios'
 import PuzzlePiece from './PuzzlePiece'
 import UserCursor from './UserCursor'
+import JoinSession from './JoinSession'
 
 const PuzzleGame: React.FC = () => {
   const { sessionId } = useParams<{ sessionId: string }>()
@@ -32,6 +33,7 @@ const PuzzleGame: React.FC = () => {
   const wsRef = useRef<WebSocket | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [containerOffset, setContainerOffset] = useState({ x: 0, y: 0 })
+  const [needsToJoin, setNeedsToJoin] = useState(false)
 
   useEffect(() => {
     if (!sessionId) return
@@ -40,7 +42,7 @@ const PuzzleGame: React.FC = () => {
     const userName = localStorage.getItem('userName')
     
     if (!userId || !userName) {
-      navigate('/')
+      setNeedsToJoin(true)
       return
     }
 
@@ -208,6 +210,10 @@ const PuzzleGame: React.FC = () => {
 
   const handlePieceRelease = (pieceId: number, x: number, y: number) => {
     sendMessage(MessageType.PIECE_RELEASE, { pieceId, x, y })
+  }
+
+  if (needsToJoin) {
+    return <JoinSession />
   }
 
   if (isLoading) {

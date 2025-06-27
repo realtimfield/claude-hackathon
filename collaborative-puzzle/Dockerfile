@@ -39,5 +39,6 @@ COPY --from=builder /app/target/collaborative-puzzle-*.jar app.jar
 # Expose port
 EXPOSE 8080
 
-# Run the application
+# Run the application with memory settings
+#ENTRYPOINT ["java", "-Xms400m", "-Xmx400m", "-jar", "app.jar"]
 ENTRYPOINT ["java", "-jar", "app.jar"]
